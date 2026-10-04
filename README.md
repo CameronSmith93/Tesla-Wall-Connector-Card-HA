@@ -82,9 +82,10 @@ Tap the charger or any figure to open its details in Home Assistant.
   reads as about 0.1 kW. The card shows 0 kW whenever the relay is open.
 - **Fault codes.** The integration doesn't say which fault, so the card shows a steady red light
   rather than the real blink code.
-- **The handle is the slim North American one.** Tesla's photos of every faceplate show the NACS
-  handle. Wall Connectors sold in Australia, New Zealand, the UK and Europe have a chunkier Type 2
-  handle, so the card's handle won't quite match yours there.
+- **The handle is the slim North American one.** Tesla's colour-matched faceplate photos show the
+  NACS handle, and the card uses that handle for every faceplate so they all match. Wall Connectors
+  sold in Australia, New Zealand, the UK and Europe have a chunkier Type 2 handle, so the card's
+  handle won't quite match yours there.
 - **Gen 3 only.** The integration supports the Gen 3 Wall Connector (the one with Wi-Fi).
 
 Built and tested with a Gen 3 Wall Connector (Type 2, single-phase, Australia) with a Midnight
@@ -139,7 +140,7 @@ The card is designed for a full-width slot in a sections view, and works from ab
 | `vehicle_name` | | The car on this charger, shown while it's plugged in |
 | `vehicle_battery` | | A sensor with the car's battery level, shown beside its name |
 | `schedule.start`, `schedule.end` | | The charging window set on the Wall Connector (24-hour `HH:MM`). Windows that cross midnight work. |
-| `negotiating_light` | `blink2` | What the bar shows while the charger holds charging off: `blink2` (two blue blinks), `breathe` (blue, slowly pulsing) or `solid` (solid blue) |
+| `negotiating_light` | `blink2` | YAML only. What the bar shows while the charger holds charging off: `blink2` (two blue blinks), `breathe` (blue, slowly pulsing) or `solid` (solid blue) |
 
 The card reads these entities, each starting with `entity_prefix`:
 
@@ -191,7 +192,7 @@ python3 tools/make_docs.py
 
 - The charger is a cut-out of Tesla's front-on product photo, with the lit light bar painted out.
   There are two per faceplate, handle docked and handle out, and the card swaps between them when
-  a car is plugged in or unplugged.
+  a car is plugged in or unplugged. All five share one handle, cable and outline, so they line up exactly.
 - The light bar is seven lights laid over the photo where the real ones are, animated with CSS:
   streaming, blinking or steady, with a glow on the faceplate. On the white glass faceplate the
   lights are white with a coloured glow; on the colour-matched faceplates they're coloured lines,

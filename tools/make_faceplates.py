@@ -4,8 +4,8 @@ Cut the Gen 3 Wall Connector out of Tesla's product photos, one per faceplate, w
 switched off, in two versions: handle docked, and handle out (in a car).
 
 The four colour-matched photos are framed identically, so the outline is worked out once (from the
-Midnight Silver photo) and shared. The white photo is framed a little differently, so it uses the
-same outline, mapped into its frame (see white()).
+Midnight Silver photo) and shared. The white faceplate's glass comes from Tesla's white photo, put
+onto the Midnight Silver photo's handle and cables (see white()), so all five match exactly.
 
 Input: assets/photos/<name>.jpg. Output: assets/faceplates/<name>.webp and <name>-in-use.webp, all
 the same size, so the card can use one set of positions (light bar, handle) for every faceplate.
@@ -32,7 +32,7 @@ BAR = (997, 1096, 1356)                      # the light bar: x, top, bottom (ph
 CHIN_BOTTOM = 1512                           # the faceplate's lowest point (photo y)
 CABLE_TOP, CABLE_X = 1488, (966, 1032)       # where the cable leaves the faceplate (photo coords)
 RIM = 9                                      # width of the white glass's pale bevel to tone down (px)
-WHITE_FIT = (0.963, 0.971, 30.0, 27.5)      # colour photo -> white photo: x scale, y scale, x, y offset
+WHITE_FIT = (0.781, 0.781, 220.0, 219.5)    # colour photo -> white photo: x scale, y scale, x, y offset
 OUT_SCALE = 0.75
 
 COLOURED = ['midnight_silver_metallic', 'solid_black', 'deep_blue_metallic', 'red_multi_coat']
@@ -148,58 +148,53 @@ def main():
         save(F, a, OUT / f'{name}.webp')
         save(*in_use(F, a, keep, edge), OUT / f'{name}-in-use.webp')
         print('done', name)
-    white(keep)
+    white(core, keep, edge)
 
 
-def white(keep):
-    """White glass on a white background has almost no edge to cut along, so the faceplate's
-    outline comes from the colour photos (where it's crisp), mapped into the white photo's frame.
-    The mapping (WHITE_FIT) was fitted to the white photo's own edges, to about a pixel. The handle
-    and cables, which are dark, are cut from the white photo itself. The badges at the right of
-    the photo fall outside the crop."""
+def white(core, keep, edge, photo='white', fit=WHITE_FIT, out='white'):
+    """The white faceplate, on exactly the same handle, cables and outline as the colour-matched
+    ones.
+
+    Tesla's white photo is a different render: framed differently, and with its own handle. So only
+    its glass is used, mapped into the colour photos' frame (WHITE_FIT was fitted to the white
+    photo's edges, to about a pixel), and everything else, handle, cables and outline, comes from
+    the Midnight Silver photo. White glass on a white background would be hard to cut out anyway;
+    this way it doesn't need to be."""
     k = lambda r: np.ones((2 * r + 1, 2 * r + 1), np.uint8)
-    A = np.float32([[WHITE_FIT[0], 0, WHITE_FIT[2]], [0, WHITE_FIT[1], WHITE_FIT[3]]])
-    to_white = lambda y: int(y * WHITE_FIT[1] + WHITE_FIT[3])
-    img = load('white')
+    sx, sy, tx, ty = fit
+    to_white = np.float32([[sx, 0, tx], [0, sy, ty]])
+    to_colour = cv2.invertAffineTransform(to_white)
     face_c = keep.copy(); face_c[CHIN_BOTTOM:] = 0     # faceplate and chin, not the cable below it
     face_c[CABLE_TOP:, CABLE_X[0]:CABLE_X[1]] = 0
-    face = np.clip(cv2.warpAffine(face_c.astype(np.float32), A, (2000, 2000), flags=cv2.INTER_LINEAR), 0, 1)
-    dark = (img.mean(axis=2) < 100).astype(np.uint8)  # handle and cables
-    n, lab, st, _ = cv2.connectedComponentsWithStats(dark, 8)
-    dark = np.isin(lab, [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] > 2000]).astype(np.uint8)
-    F, a = cut(img, ((face > .5) | dark).astype(np.uint8))
-    F = lights_off(F, True, (round(997.5 * WHITE_FIT[0] + WHITE_FIT[2]), to_white(BAR[1]), to_white(BAR[2])))
-    # The glass's bevel catches the light as a pale rim, which against a dark card reads as a glow
+    # the glass, in the white photo's own frame
+    img = load(photo)
+    face = np.clip(cv2.warpAffine(face_c.astype(np.float32), to_white, (2000, 2000), flags=cv2.INTER_LINEAR), 0, 1)
+    F, _ = cut(img, (face > .5).astype(np.uint8))    # edge colours without the background mixed in
+    F = lights_off(F, True, (round(BAR[0] * sx + tx), round(BAR[1] * sy + ty), round(BAR[2] * sy + ty)))
+    # The glass's bevel can catch the light as a pale rim, which against a dark card reads as a glow
     # down the shaded left side. Where the rim is paler than the glass just inside it, tone it down
     # towards that glass colour.
     inside = cv2.distanceTransform((face > .5).astype(np.uint8), cv2.DIST_L2, 5)
     ys, xs = np.nonzero(face > .5)
     y0, y1, x0, x1 = ys.min() - 4, ys.max() + 5, xs.min() - 4, xs.max() + 5
     deep = inside[y0:y1, x0:x1] > RIM
-    glass = cv2.inpaint(np.clip(F[y0:y1, x0:x1], 0, 255).astype(np.uint8), (~deep).astype(np.uint8), 5,
+    inner = cv2.inpaint(np.clip(F[y0:y1, x0:x1], 0, 255).astype(np.uint8), (~deep).astype(np.uint8), 5,
                         cv2.INPAINT_TELEA).astype(np.float32)      # the glass colour, carried out to the edge
     Fc = F[y0:y1, x0:x1]
     w = np.clip(1 - inside[y0:y1, x0:x1] / RIM, 0, 1)[..., None] * .85
     w[(inside[y0:y1, x0:x1] == 0) & (face[y0:y1, x0:x1] > 0)] = 1   # the soft outermost pixels too
-    pale = ((Fc.mean(axis=2) - glass.mean(axis=2)) > 4)[..., None] & (face[y0:y1, x0:x1] > 0)[..., None]
-    F[y0:y1, x0:x1] = np.where(pale, glass * w + Fc * (1 - w), Fc)
-    near = lambda m: cv2.dilate(m.astype(np.uint8), k(3)) > 0
-    box = (X0 * WHITE_FIT[0] + WHITE_FIT[2], Y0 * WHITE_FIT[1] + WHITE_FIT[3],
-           (X0 + W) * WHITE_FIT[0] + WHITE_FIT[2], (Y0 + H) * WHITE_FIT[1] + WHITE_FIT[3])
-    save(F, np.maximum(face, a * near(dark)), OUT / 'white.webp', box)
-    # handle out: the faceplate (its outline already runs smoothly past where the handle sits) and
-    # the centre cable
-    chin = to_white(CHIN_BOTTOM)
-    below = dark.copy(); below[:chin - 30] = 0
-    lab_b, _ = ndimage.label(below)
-    xs = np.nonzero(below[chin + 20])[0]
-    cable = lab_b == lab_b[chin + 20, xs[np.argmin(np.abs(xs - 1000))]]
-    F2 = F.copy()
-    for y in range(to_white(930), to_white(1160)):   # faceplate colour right up to its edge
-        xs = np.nonzero(face[y] > .5)[0]
-        if len(xs): e = xs[-1]; F2[y, e - 2:e + 2] = F[y, e - 6]
-    save(F2, np.maximum(face, a * near(cable)), OUT / 'white-in-use.webp', box)
-    print('done white')
+    pale = ((Fc.mean(axis=2) - inner.mean(axis=2)) > 4)[..., None] & (face[y0:y1, x0:x1] > 0)[..., None]
+    F[y0:y1, x0:x1] = np.where(pale, inner * w + Fc * (1 - w), Fc)
+    glass = cv2.warpAffine(F, to_colour, (2000, 2000), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    # handle, cables and outline from the Midnight Silver photo
+    ref = load('midnight_silver_metallic')
+    Fr, a = cut(ref, core)
+    rest = cv2.dilate((core & (1 - face_c)).astype(np.uint8), k(1)) > 0   # handle and cables
+    region = (cv2.dilate(face_c, k(3)) > 0) & ~(rest & (face_c == 0))
+    F = np.where(region[..., None], glass, Fr)
+    save(F, a, OUT / f'{out}.webp')
+    save(*in_use(F, a, keep, edge), OUT / f'{out}-in-use.webp')
+    print('done', out)
 
 
 if __name__ == '__main__':

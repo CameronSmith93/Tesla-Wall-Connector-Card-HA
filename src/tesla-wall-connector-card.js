@@ -161,18 +161,14 @@
             { name: 'start', selector: { time: {} } },
             { name: 'end', selector: { time: {} } },
           ] },
-          { name: 'negotiating_light', selector: { select: { mode: 'dropdown', options: [
-            { value: 'blink2', label: 'Two blue blinks' }, { value: 'breathe', label: 'Blue breathing' }, { value: 'solid', label: 'Solid blue' }] } } },
         ],
         computeLabel: (f) => ({
           entity_prefix: 'Entity prefix', faceplate: 'Faceplate', name: 'Title', vehicle_name: 'Vehicle name',
           vehicle_battery: 'Vehicle battery sensor', start: 'Charging allowed from', end: 'Charging allowed until',
-          negotiating_light: 'Light while waiting to charge',
         })[f.name],
         computeHelper: (f) => ({
           entity_prefix: 'The part shared by the charger\'s entities, e.g. tesla_wall_connector for sensor.tesla_wall_connector_status',
           schedule: 'The charging times set on the Wall Connector, if any',
-          negotiating_light: 'What the light bar shows while a car is plugged in but charging is held off',
         })[f.name],
       };
     }
