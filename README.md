@@ -48,8 +48,13 @@ charger reports:
 | Plugged in, not ready to charge | Two blue blinks (held off by a schedule or access control) | Two blinks, then a pause |
 | Charging, or charging reduced | Green, streaming | Green streams down the bar, with a soft glow |
 | Fault | Red blink codes | Top light red |
-| Starting up | All seven lights | All seven, white |
+| Starting up | All seven lights, green, for up to five seconds | All seven, green (rarely seen: see below) |
 | Offline | Nothing | Nothing |
+
+"Starting up" is Home Assistant's name for the charger's state 0. The real lights only show for the
+first five seconds after power-on, very likely before the charger is back on Wi-Fi, and the
+integration polls every 30 seconds, so the card will almost always go from Offline straight to the
+next state.
 
 "Plugged in, not ready to charge" is what a Wall Connector shows while its own charging schedule
 holds charging off: two blue blinks, checked against a real charger.

@@ -9,7 +9,7 @@
  * Light codes are from Tesla's Wall Connector 3 install manual (APAC), "Wall Connector LEDs".
  */
 (() => {   // keep everything out of the page's global scope
-  const TWC_CARD_VERSION = '1.1.2';
+  const TWC_CARD_VERSION = '1.1.3';
 
   // Tesla's faceplates: the standard white glass one and the four colour-matched ones. Each has two
   // photos: handle docked, and handle out (in a car). Every photo is framed the same way.
@@ -40,7 +40,7 @@
   // HA status -> what the light bar shows.
   //   mode: solid | stream | blink2 | all | off;  led: which of the 7 (0 = top)
   const LIGHTS = {
-    booting:           { mode: 'all', colour: 'white' },
+    booting:           { mode: 'all', colour: 'green' },   // all seven green, as seen on a real charger
     not_connected:     { mode: 'solid', led: 0, colour: 'green' },
     connected:         { mode: 'solid', led: 2, colour: 'blue' },
     ready:             { mode: 'solid', led: 2, colour: 'blue' },
