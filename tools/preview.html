@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Preview the card without Home Assistant, using made-up charger states.
+
+  Open in a browser after running tools/build.py. With no query string it shows every faceplate in
+  every state. To show one card: preview.html?faceplate=red_multi_coat&state=charging&width=520
+-->
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <title>Tesla Wall Connector card preview</title>
+  <style>
+    body { margin: 0; padding: 24px; background: #111214; font: 13px -apple-system, BlinkMacSystemFont, Inter, Roboto, sans-serif; color: #9a9ea5; }
+    body.single { padding: 0; background: transparent; }
+    h2 { font-weight: 500; color: #d9dbde; margin: 28px 0 10px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 18px; }
+    .cell p { margin: 0 0 6px; }
+  </style>
+  <script src="../dist/tesla-wall-connector-card.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const SCENARIOS = {
+  idle:     { label: 'Not plugged in',                  status: 'not_connected', plugged: false },
+  waiting:  { label: 'Plugged in, waiting for the schedule', status: 'negotiating', plugged: true },
+  charging: { label: 'Charging',                        status: 'charging', plugged: true, closed: true, kw: 7.31, amps: 31.6, session: 12.4, handle: 38 },
+  reduced:  { label: 'Charging, reduced (too hot)',     status: 'charging_reduced', plugged: true, closed: true, kw: 3.6, amps: 15.2, session: 4.8, handle: 61 },
+  complete: { label: 'Charging complete',               status: 'charging_finished', plugged: true, session: 24.6 },
+  offline:  { label: 'Offline',                         status: 'unavailable', plugged: false },
+};
+const FACEPLATE_KEYS = ['white', 'solid_black', 'midnight_silver_metallic', 'deep_blue_metallic', 'red_multi_coat'];
+
+function states(s, prefix = 'tesla_wall_connector') {
+  const st = (state, attributes = {}) => ({ state: String(state), attributes });
+  return {
+    [`sensor.${prefix}_status`]: st(s.status),
+    [`binary_sensor.${prefix}_vehicle_connected`]: st(s.plugged ? 'on' : 'off'),
+    [`binary_sensor.${prefix}_contactor_closed`]: st(s.closed ? 'on' : 'off'),
+    [`sensor.${prefix}_total_power`]: st(s.kw ?? 0.0966, { unit_of_measurement: 'kW' }),
+    [`sensor.${prefix}_vehicle_current`]: st(s.amps ?? 0.4, { unit_of_measurement: 'A' }),
+    [`sensor.${prefix}_session_energy`]: st(s.session ?? 0, { unit_of_measurement: 'kWh' }),
+    [`sensor.${prefix}_grid_voltage`]: st(241.6, { unit_of_measurement: 'V' }),
+    [`sensor.${prefix}_handle_temperature`]: st(s.handle ?? 27, { unit_of_measurement: '°C' }),
+    'sensor.my_car_battery': st(s.status === 'charging_finished' ? 90 : 72, { unit_of_measurement: '%' }),
+  };
+}
+
+function card(faceplate, scenario, width) {
+  const el = document.createElement('tesla-wall-connector-card');
+  el.setConfig({ faceplate, vehicle_name: 'My car', vehicle_battery: 'sensor.my_car_battery',
+                 schedule: { start: '00:00', end: '16:00' } });
+  el.hass = { states: states(SCENARIOS[scenario]) };
+  el.style.width = `${width}px`;
+  return el;
+}
+
+const q = new URLSearchParams(location.search);
+const root = document.getElementById('root');
+if (q.has('state')) {
+  document.body.classList.add('single');
+  const el = card(q.get('faceplate') || 'white', q.get('state'), Number(q.get('width') || 520));
+  el.id = 'card';
+  root.appendChild(el);
+} else {
+  for (const fp of FACEPLATE_KEYS) {
+    const h = document.createElement('h2'); h.textContent = fp; root.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'grid'; root.appendChild(grid);
+    for (const s of Object.keys(SCENARIOS)) {
+      const cell = document.createElement('div'); cell.className = 'cell';
+      const p = document.createElement('p'); p.textContent = SCENARIOS[s].label; cell.appendChild(p);
+      cell.appendChild(card(fp, s, 420));
+      grid.appendChild(cell);
+    }
+  }
+}
+</script>
+</body>
+</html>

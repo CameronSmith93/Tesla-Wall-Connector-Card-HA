@@ -1,0 +1,6 @@
+# frames for docs/charging.gif, removed by tools/make_docs.py
+docs/frames/
+node_modules/
+__pycache__/
+.venv/
+.DS_Store

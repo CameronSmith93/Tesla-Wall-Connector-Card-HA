@@ -1,0 +1,6 @@
+{
+  "name": "Tesla Wall Connector Card",
+  "filename": "tesla-wall-connector-card.js",
+  "render_readme": true,
+  "homeassistant": "2024.11.0"
+}
