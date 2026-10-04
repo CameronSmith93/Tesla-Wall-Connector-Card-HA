@@ -8,7 +8,7 @@
  * Light codes are from Tesla's Wall Connector 3 install manual (APAC), "Wall Connector LEDs".
  */
 (() => {   // keep everything out of the page's global scope
-  const TWC_CARD_VERSION = '1.1.0';
+  const TWC_CARD_VERSION = '1.1.1';
 
   // Tesla's faceplates: the standard white glass one and the four colour-matched ones. Each has two
   // photos: handle docked, and handle out (in a car). Every photo is framed the same way.
@@ -157,7 +157,7 @@
     static getConfigForm() {
       return {
         schema: [
-          { name: 'entity_prefix', required: true, selector: { text: {} } },
+          { name: 'entity_prefix', selector: { text: {} } },
           { name: 'faceplate', selector: { select: { mode: 'dropdown',
             options: Object.entries(FACEPLATES).map(([value, f]) => ({ value, label: f.name })) } } },
           { name: 'name', selector: { text: {} } },
@@ -174,7 +174,8 @@
           vehicle_battery: 'Vehicle battery sensor', max_current: 'Maximum current', start: 'Charging allowed from', end: 'Charging allowed until',
         })[f.name],
         computeHelper: (f) => ({
-          entity_prefix: 'The part shared by the charger\'s entities, e.g. tesla_wall_connector for sensor.tesla_wall_connector_status',
+          entity_prefix: 'The part shared by the charger\'s entities, e.g. tesla_wall_connector for sensor.tesla_wall_connector_status. Blank means tesla_wall_connector',
+          name: 'Blank means Wall Connector',
           max_current: 'The most the Wall Connector is set to supply on each phase, so the card can tell full-rate charging from reduced',
           schedule: 'The charging times set on the Wall Connector, if any',
         })[f.name],
@@ -183,7 +184,9 @@
 
     setConfig(config) {
       if (!config) throw new Error('Invalid configuration');
-      this._config = { entity_prefix: 'tesla_wall_connector', name: 'Wall Connector', faceplate: 'white', ...config };
+      // a field cleared in the editor comes through as '', which means its default too
+      this._config = { ...config, faceplate: config.faceplate || 'white',
+        entity_prefix: config.entity_prefix || 'tesla_wall_connector', name: config.name || 'Wall Connector' };
       const fp = FACEPLATE_ALIASES[this._config.faceplate] || this._config.faceplate;
       if (!FACEPLATES[fp]) throw new Error(`faceplate must be one of: ${Object.keys(FACEPLATES).join(', ')}`);
       this._faceplate = fp;
