@@ -8,7 +8,7 @@
  * Light codes are from Tesla's Wall Connector 3 install manual (APAC), "Wall Connector LEDs".
  */
 (() => {   // keep everything out of the page's global scope
-  const TWC_CARD_VERSION = '1.0.1';
+  const TWC_CARD_VERSION = '1.1.0';
 
   // Tesla's faceplates: the standard white glass one and the four colour-matched ones. Each has two
   // photos: handle docked, and handle out (in a car). Every photo is framed the same way.
@@ -47,7 +47,9 @@
     charging_finished: { mode: 'solid', led: 2, colour: 'blue' },
     negotiating:       { mode: 'blink2', led: 2, colour: 'blue' },   // two blue blinks: seen on the real charger while it waits on its schedule
     charging:          { mode: 'stream', colour: 'green' },
-    charging_reduced:  { mode: 'stream', colour: 'green', red: 3 },
+    // HA's "reduced" is the charger's state 10: charging below three phases at 16 A, which a
+    // single-phase charger always is. It isn't overheating, and the real bar just streams green.
+    charging_reduced:  { mode: 'stream', colour: 'green' },
     error:             { mode: 'solid', led: 0, colour: 'red' },
   };
 
@@ -61,7 +63,7 @@
     charging_finished: 'Charging complete',
     negotiating: 'Waiting to charge',
     charging: 'Charging',
-    charging_reduced: 'Charging · reduced (too hot)',
+    charging_reduced: 'Charging',
     error: 'Fault',
   };
 
@@ -105,9 +107,6 @@
     @keyframes stream { 0% { opacity: .18; } 18% { opacity: 1; } 45% { opacity: .5; } 100% { opacity: .18; } }
     .led.blink2 { animation: blink2 2.2s steps(1, end) infinite; }
     @keyframes blink2 { 0% { opacity: 1; } 12% { opacity: 0; } 24% { opacity: 1; } 36% { opacity: 0; } 100% { opacity: 0; } }
-    /* three red blinks, then a one-second pause (the manual: "all red blink codes pause for one second") */
-    .led.red3 { animation: red3 2.5s steps(1, end) infinite; }
-    @keyframes red3 { 0% { opacity: 1; } 10% { opacity: 0; } 20% { opacity: 1; } 30% { opacity: 0; } 40% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
     .halo.stream { animation: halo 3.2s ease-in-out infinite; }
     @keyframes halo { 0%, 100% { opacity: .45; } 50% { opacity: .75; } }
     @media (prefers-reduced-motion: reduce) { .led.stream, .halo.stream { animation: none; opacity: 1; } }
@@ -130,12 +129,21 @@
     .stats { margin-top: 2.4cqw; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid rgba(255,255,255,.09); padding-top: 2.2cqw; }
     .stat { cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .stat + .stat { padding-left: 2.4cqw; border-left: 1px solid rgba(255,255,255,.07); }
-    .stat .k { font-size: max(9px, 1.9cqw); letter-spacing: .14em; text-transform: uppercase; color: #7d8188; }
+    .stat .k { font-size: max(9px, 1.9cqw); letter-spacing: .14em; text-transform: uppercase; color: #7d8188; white-space: nowrap; }
     .stat .v { margin-top: .7cqw; font-size: max(14px, 3.7cqw); color: #eceef0; white-space: nowrap; }
     .stat .v small { font-size: .68em; color: #a3a7ad; margin-left: .15em; }
   `;
 
   const TIME = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+  // A phase is live when it has voltage. The charger only measures it with its relay closed, so
+  // the card works out the phases while charging and remembers them in between.
+  const PHASES = ['a', 'b', 'c'];
+  const LIVE_V = 100;
+  const PHASE_NAME = { 1: '1-phase', 3: '3-phase' };
+  // Cars draw a little under what they're offered (30.8 A from a 32 A charger), so anything within
+  // this of max_current on every live phase counts as the full rate.
+  const FULL_MARGIN_A = 2;
 
   class TeslaWallConnectorCard extends HTMLElement {
     // A new card picks up the first Wall Connector it finds.
@@ -155,6 +163,7 @@
           { name: 'name', selector: { text: {} } },
           { name: 'vehicle_name', selector: { text: {} } },
           { name: 'vehicle_battery', selector: { entity: { domain: 'sensor' } } },
+          { name: 'max_current', selector: { number: { min: 6, max: 80, step: 1, mode: 'box', unit_of_measurement: 'A' } } },
           { name: 'schedule', type: 'expandable', title: 'Charging schedule', schema: [
             { name: 'start', selector: { time: {} } },
             { name: 'end', selector: { time: {} } },
@@ -162,10 +171,11 @@
         ],
         computeLabel: (f) => ({
           entity_prefix: 'Entity prefix', faceplate: 'Faceplate', name: 'Title', vehicle_name: 'Vehicle name',
-          vehicle_battery: 'Vehicle battery sensor', start: 'Charging allowed from', end: 'Charging allowed until',
+          vehicle_battery: 'Vehicle battery sensor', max_current: 'Maximum current', start: 'Charging allowed from', end: 'Charging allowed until',
         })[f.name],
         computeHelper: (f) => ({
           entity_prefix: 'The part shared by the charger\'s entities, e.g. tesla_wall_connector for sensor.tesla_wall_connector_status',
+          max_current: 'The most the Wall Connector is set to supply on each phase, so the card can tell full-rate charging from reduced',
           schedule: 'The charging times set on the Wall Connector, if any',
         })[f.name],
       };
@@ -180,6 +190,10 @@
       // a schedule only counts once it has both ends (the editor fills it in one field at a time)
       const s = this._config.schedule;
       this._schedule = s && TIME.test(s.start || '') && TIME.test(s.end || '') ? s : null;
+      const max = this._config.max_current;
+      if (max !== undefined && max !== null && max !== '' && !(Number(max) > 0)) throw new Error('max_current must be a number of amps');
+      this._max = Number(max) > 0 ? Number(max) : null;
+      try { this._phases = Number(localStorage.getItem(this._phaseKey())) || null; } catch (e) { this._phases = null; }
       this._built = false;
       this._build();
       this._update();
@@ -192,6 +206,25 @@
 
     connectedCallback() { this._timer = setInterval(() => this._update(), 30000); }
     disconnectedCallback() { clearInterval(this._timer); }
+
+    _phaseKey() { return `tesla-wall-connector-card:phases:${this._config.entity_prefix}`; }
+
+    // While charging: how many phases are live, and whether each live one is at max_current.
+    _supply(closed) {
+      if (!closed) return null;
+      const volts = PHASES.map((p) => this._num('sensor', `phase_${p}_voltage`));
+      if (volts.some((v) => v === null)) return null;
+      const live = PHASES.filter((p, i) => volts[i] > LIVE_V);
+      if (!live.length) return null;
+      if (live.length !== this._phases) {
+        this._phases = live.length;
+        try { localStorage.setItem(this._phaseKey(), String(live.length)); } catch (e) { /* not remembered */ }
+      }
+      const amps = live.map((p) => this._num('sensor', `phase_${p}_current`));
+      if (amps.some((a) => a === null)) return { phases: live.length };
+      return { phases: live.length, used: amps.filter((a) => a >= 1).length,
+               full: this._max ? amps.every((a) => a >= this._max - FULL_MARGIN_A) : null };
+    }
 
     _id(domain, key) { return `${domain}.${this._config.entity_prefix}_${key}`; }
     _st(domain, key) { return this._hass && this._hass.states[this._id(domain, key)]; }
@@ -237,7 +270,7 @@
               </div>
               <div class="stats">
                 <div class="stat" data-more="sensor:session_energy" role="button" tabindex="0"><div class="k">Session</div><div class="v s-session"></div></div>
-                <div class="stat" data-more="sensor:grid_voltage" role="button" tabindex="0"><div class="k">Grid</div><div class="v s-grid"></div></div>
+                <div class="stat" data-more="sensor:grid_voltage" role="button" tabindex="0"><div class="k k-grid">Grid</div><div class="v s-grid"></div></div>
                 <div class="stat" data-more="sensor:handle_temperature" role="button" tabindex="0"><div class="k">Handle</div><div class="v s-handle"></div></div>
               </div>
             </div>
@@ -308,7 +341,6 @@
         if (light.mode === 'stream') { el.classList.add('stream'); el.style.animationDelay = `${(i * 0.16).toFixed(2)}s`; }
         else if (light.mode === 'all') el.classList.add('on');
         else if (['solid', 'blink2'].includes(light.mode) && i === light.led) el.classList.add(light.mode === 'solid' ? 'on' : light.mode);
-        if (light.red && i === 0) { el.className = 'led red3'; setC(COLOURS.red); el.style.animationDelay = ''; }
       });
       const halo = r.querySelector('.halo');
       halo.className = 'halo' + (light.mode === 'stream' ? ' stream' : '');
@@ -328,10 +360,17 @@
         `${kw >= 10 ? kw.toFixed(0) : kw === 0 ? '0' : kw.toFixed(1)}<small>kW</small>`;
 
       const amps = this._num('sensor', 'vehicle_current');
+      const supply = offline ? null : this._supply(closed);
       let stext = offline ? 'Offline' : (STATUS_TEXT[status] || status);
       const until = this._untilWindow();
-      if (!offline && status === 'charging' && amps !== null) stext = `Charging · ${Math.round(amps)} A`;
-      if (!offline && plugged && !closed && until > 0 && status !== 'charging') stext = 'Waiting for scheduled charging';
+      if (!offline && ['charging', 'charging_reduced'].includes(status) && amps !== null) {
+        const a = Math.round(amps);
+        stext = `Charging · ${a} A`;
+        if (supply && supply.full) stext = `Charging · full rate · ${a} A`;
+        else if (supply && supply.used < supply.phases) stext = `Charging · reduced · ${supply.used} phase${supply.used === 1 ? '' : 's'}`;
+        else if (supply && supply.full === false) stext = `Charging · reduced · ${a} of ${this._max} A`;
+      }
+      if (!offline && plugged && !closed && until > 0 && !['charging', 'charging_reduced'].includes(status)) stext = 'Waiting for scheduled charging';
       r.querySelector('.stext').textContent = stext;
       r.querySelector('.dot').classList.toggle('none', light.mode === 'off');
 
@@ -361,6 +400,7 @@
       const fmt = (v, d, unit) => (v === null || offline) ? '–' : `${v.toFixed(d)}<small>${unit}</small>`;
       r.querySelector('.s-session').innerHTML = fmt(this._num('sensor', 'session_energy'), 1, 'kWh');
       r.querySelector('.s-grid').innerHTML = fmt(this._num('sensor', 'grid_voltage'), 0, 'V');
+      r.querySelector('.k-grid').textContent = PHASE_NAME[this._phases] || 'Grid';
       r.querySelector('.s-handle').innerHTML = fmt(this._num('sensor', 'handle_temperature'), 0, '°C');
     }
   }

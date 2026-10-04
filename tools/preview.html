@@ -24,8 +24,10 @@
 const SCENARIOS = {
   idle:     { label: 'Not plugged in',                  status: 'not_connected', plugged: false },
   waiting:  { label: 'Plugged in, waiting for the schedule', status: 'negotiating', plugged: true },
-  charging: { label: 'Charging',                        status: 'charging', plugged: true, closed: true, kw: 7.31, amps: 31.6, session: 12.4, handle: 38 },
-  reduced:  { label: 'Charging, reduced (too hot)',     status: 'charging_reduced', plugged: true, closed: true, kw: 3.6, amps: 15.2, session: 4.8, handle: 61 },
+  charging: { label: 'Charging, full rate',             status: 'charging_reduced', plugged: true, closed: true, kw: 7.1, amps: 30.8, session: 12.4, handle: 38 },
+  reduced:  { label: 'Charging, reduced',               status: 'charging_reduced', plugged: true, closed: true, kw: 2.8, amps: 12.1, session: 23.9, handle: 29 },
+  three:    { label: 'Three-phase, full rate',          status: 'charging', plugged: true, closed: true, kw: 11.0, amps: 15.9, session: 8.2, handle: 35, phases: 3, max: 16 },
+  oneofthree: { label: 'Three-phase, car on one phase', status: 'charging_reduced', plugged: true, closed: true, kw: 3.7, amps: 15.9, session: 3.1, handle: 30, phases: 3, used: 1, max: 16 },
   complete: { label: 'Charging complete',               status: 'charging_finished', plugged: true, session: 24.6 },
   offline:  { label: 'Offline',                         status: 'unavailable', plugged: false },
 };
@@ -42,6 +44,12 @@ function states(s, prefix = 'tesla_wall_connector') {
     [`sensor.${prefix}_session_energy`]: st(s.session ?? 0, { unit_of_measurement: 'kWh' }),
     [`sensor.${prefix}_grid_voltage`]: st(241.6, { unit_of_measurement: 'V' }),
     [`sensor.${prefix}_handle_temperature`]: st(s.handle ?? 27, { unit_of_measurement: '°C' }),
+    // the charger measures phase voltage after its relay, so it reads ~0 V unless charging
+    ...Object.fromEntries(['a', 'b', 'c'].flatMap((p, i) => {
+      const live = s.closed && i < (s.phases ?? 1), used = live && i < (s.used ?? s.phases ?? 1);
+      return [[`sensor.${prefix}_phase_${p}_voltage`, st(live ? 234.6 : 0.4, { unit_of_measurement: 'V' })],
+              [`sensor.${prefix}_phase_${p}_current`, st(used ? s.amps : 0.3, { unit_of_measurement: 'A' })]];
+    })),
     'sensor.my_car_battery': st(s.status === 'charging_finished' ? 90 : 72, { unit_of_measurement: '%' }),
   };
 }
@@ -49,7 +57,7 @@ function states(s, prefix = 'tesla_wall_connector') {
 function card(faceplate, scenario, width) {
   const el = document.createElement('tesla-wall-connector-card');
   el.setConfig({ faceplate, vehicle_name: 'My car', vehicle_battery: 'sensor.my_car_battery',
-                 schedule: { start: '00:00', end: '16:00' } });
+                 max_current: SCENARIOS[scenario].max ?? 32, schedule: { start: '00:00', end: '16:00' } });
   el.hass = { states: states(SCENARIOS[scenario]) };
   el.style.width = `${width}px`;
   return el;

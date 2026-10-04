@@ -22,7 +22,7 @@ const SHOTS = [
   ['idle-white.png', 'white', 'idle', 520, '21:30', 0],
   ['waiting-midnight-silver.png', 'midnight_silver_metallic', 'waiting', 520, '21:30', 100],
   ['charging-deep-blue.png', 'deep_blue_metallic', 'charging', 520, '01:30', 900],
-  ['reduced-red.png', 'red_multi_coat', 'reduced', 520, '13:10', 100],
+  ['complete-red.png', 'red_multi_coat', 'complete', 520, '06:10', 0],
   ['phone-solid-black.png', 'solid_black', 'charging', 360, '01:30', 600],
 ];
 

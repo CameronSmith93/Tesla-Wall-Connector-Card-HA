@@ -13,8 +13,8 @@ the car. Beside it are the charger's live figures from Home Assistant's built-in
 |:---:|:---:|
 | ![Not plugged in](docs/idle-white.png) | ![Waiting for scheduled charging](docs/waiting-midnight-silver.png) |
 | **Not plugged in.** The top light is green and the handle is in its holster. | **Plugged in, waiting for the schedule.** The light bar gives two blue blinks, as the real one does. |
-| ![Charging](docs/charging-deep-blue.png) | ![Charging, reduced](docs/reduced-red.png) |
-| **Charging.** Green streams down the light bar. | **Charging, reduced.** The charger is too hot, so three red blinks run over the green. |
+| ![Charging](docs/charging-deep-blue.png) | ![Charging complete](docs/complete-red.png) |
+| **Charging.** Green streams down the light bar. | **Charging complete.** One blue light, and the handle stays in the car. |
 
 It fits a phone too:
 
@@ -46,14 +46,40 @@ charger reports:
 | Not plugged in | Top green, solid (standby) | Top light green |
 | Plugged in, ready, or finished | Blue, solid (car connected, not asking for charge) | One blue light |
 | Plugged in, not ready to charge | Two blue blinks (held off by a schedule or access control) | Two blinks, then a pause |
-| Charging | Green, streaming | Green streams down the bar, with a soft glow |
-| Charging, reduced | Green streaming, with three red blinks (high temperature) | The same |
+| Charging, or charging reduced | Green, streaming | Green streams down the bar, with a soft glow |
 | Fault | Red blink codes | Top light red |
 | Starting up | All seven lights | All seven, white |
 | Offline | Nothing | Nothing |
 
 "Plugged in, not ready to charge" is what a Wall Connector shows while its own charging schedule
 holds charging off: two blue blinks, checked against a real charger.
+
+"Charging (reduced)" is Home Assistant's name for the charger's state 10, which means charging
+below three phases at 16 A each. A single-phase charger is always below that, so it reports this
+state for the whole charge, and its light bar streams green as usual. It doesn't mean the charger is
+too hot, or even that it's charging below its own maximum, so the card works that out itself (see
+below).
+
+## Full rate or reduced
+
+Give the card your charger's `max_current` (the most it's set to supply on each phase, as shown in
+the Tesla app) and the status line says whether the car is getting all of it:
+
+| Status line | When |
+|---|---|
+| Charging · full rate · 31 A | Every live phase is within 2 A of `max_current` (cars draw a little under what they're offered) |
+| Charging · reduced · 12 of 32 A | A live phase is further below `max_current` |
+| Charging · reduced · 1 phase | A three-phase charger, but the car is only drawing from one or two phases |
+| Charging · 31 A | No `max_current` given, so the card doesn't say |
+
+Reduced means the car is taking less than the charger can supply. The card can't tell why: the car's
+own charge current setting, a nearly full or cold battery, or the charger cutting back all look the
+same from here.
+
+The card also shows whether the charger is on a single-phase or three-phase supply, in place of the
+**Grid** label. A phase counts as live when it has voltage on it, and the charger only measures that
+while its relay is closed, so the card works it out during a charge and remembers it in between.
+Until the first charge it shows **Grid**.
 
 ## What the card shows
 
@@ -62,10 +88,10 @@ holds charging off: two blue blinks, checked against a real charger.
 | The light bar | the status sensor |
 | Handle docked or out | the vehicle connected sensor |
 | Power (kW) | the total power sensor, shown as 0 while the relay is open |
-| Status line | the status, relay and vehicle sensors, and your schedule |
+| Status line | the status, relay and vehicle sensors, your schedule, and the phase currents against your `max_current` |
 | Vehicle row | the vehicle connected sensor, plus your car's name and battery sensor if you give them |
 | Schedule row | the charging times you give the card, and how long until the window opens |
-| Session, grid, handle | the session energy, grid voltage and handle temperature sensors |
+| Session, grid, handle | the session energy, grid voltage and handle temperature sensors; the grid's label comes from the phase voltages |
 
 Tap the charger or any figure to open its details in Home Assistant.
 
@@ -80,6 +106,8 @@ Tap the charger or any figure to open its details in Home Assistant.
   card uses the name and battery sensor you give it.
 - **Power while idle.** Some chargers report a few hundred milliamps with the relay open, which
   reads as about 0.1 kW. The card shows 0 kW whenever the relay is open.
+- **Overheating.** The integration doesn't report when the charger cuts its current because it's too
+  hot, so the card can't show the real light bar's three red blinks.
 - **Fault codes.** The integration doesn't say which fault, so the card shows a steady red light
   rather than the real blink code.
 - **The handle is the slim North American one.** Tesla's colour-matched faceplate photos show the
@@ -123,6 +151,7 @@ type: custom:tesla-wall-connector-card
 faceplate: midnight_silver_metallic
 vehicle_name: Model Y
 vehicle_battery: sensor.model_y_battery_level
+max_current: 32
 schedule:
   start: "00:00"
   end: "16:00"
@@ -139,6 +168,7 @@ The card is designed for a full-width slot in a sections view, and works from ab
 | `name` | `Wall Connector` | The small title above the power |
 | `vehicle_name` | | The car on this charger, shown while it's plugged in |
 | `vehicle_battery` | | A sensor with the car's battery level, shown beside its name |
+| `max_current` | | The most your Wall Connector is set to supply on each phase, in amps. Lets the status line say full rate or reduced. |
 | `schedule.start`, `schedule.end` | | The charging window set on the Wall Connector (24-hour `HH:MM`). Windows that cross midnight work. |
 
 The card reads these entities, each starting with `entity_prefix`:
@@ -153,6 +183,8 @@ The card reads these entities, each starting with `entity_prefix`:
 | `sensor.<prefix>_session_energy` | Session |
 | `sensor.<prefix>_grid_voltage` | Grid |
 | `sensor.<prefix>_handle_temperature` | Handle |
+| `sensor.<prefix>_phase_a_voltage`, `_phase_b_voltage`, `_phase_c_voltage` | single-phase or three-phase |
+| `sensor.<prefix>_phase_a_current`, `_phase_b_current`, `_phase_c_current` | full rate or reduced |
 
 For the total power to be right on a single-phase supply, turn on the integration's
 **single-phase/split-phase** option (**Settings → Devices & services → Tesla Wall Connector →
