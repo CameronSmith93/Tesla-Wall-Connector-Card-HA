@@ -67,10 +67,17 @@ the Tesla app) and the status line says whether the car is getting all of it:
 
 | Status line | When |
 |---|---|
-| Charging · full rate · 31 A | Every live phase is within 2 A of `max_current` (cars draw a little under what they're offered) |
+| Charging · full rate · 32 A | Every live phase is within 2 A of `max_current` (cars draw a little under what they're offered) |
 | Charging · reduced · 12 of 32 A | A live phase is further below `max_current` |
 | Charging · reduced · 1 phase | A three-phase charger, but the car is only drawing from one or two phases |
-| Charging · 31 A | No `max_current` given, so the card doesn't say |
+| Charging · 32 A | No `max_current` given, so the card doesn't say |
+
+On a three-phase charger set to 16 A, at full rate and with a car drawing from only one phase:
+
+| | |
+|:---:|:---:|
+| ![Three-phase, full rate](docs/three-phase-white.png) | ![Three-phase, car on one phase](docs/three-phase-one-solid-black.png) |
+| **Three-phase, full rate.** 16 A on all three phases, and **3-phase** above the voltage. | **Three-phase, reduced.** The car is only drawing from one of the three phases. |
 
 Reduced means the car is taking less than the charger can supply. The card can't tell why: the car's
 own charge current setting, a nearly full or cold battery, or the charger cutting back all look the

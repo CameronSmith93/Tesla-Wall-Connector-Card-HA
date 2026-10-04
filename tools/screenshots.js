@@ -24,6 +24,8 @@ const SHOTS = [
   ['charging-deep-blue.png', 'deep_blue_metallic', 'charging', 520, '01:30', 900],
   ['complete-red.png', 'red_multi_coat', 'complete', 520, '06:10', 0],
   ['phone-solid-black.png', 'solid_black', 'charging', 360, '01:30', 600],
+  ['three-phase-white.png', 'white', 'three', 520, '01:30', 900],
+  ['three-phase-one-solid-black.png', 'solid_black', 'oneofthree', 520, '01:30', 900],
 ];
 
 async function open(browser, faceplate, state, width, time, scale) {

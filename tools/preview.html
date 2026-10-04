@@ -24,7 +24,7 @@
 const SCENARIOS = {
   idle:     { label: 'Not plugged in',                  status: 'not_connected', plugged: false },
   waiting:  { label: 'Plugged in, waiting for the schedule', status: 'negotiating', plugged: true },
-  charging: { label: 'Charging, full rate',             status: 'charging_reduced', plugged: true, closed: true, kw: 7.1, amps: 30.8, session: 12.4, handle: 38 },
+  charging: { label: 'Charging, full rate',             status: 'charging_reduced', plugged: true, closed: true, kw: 7.6, amps: 31.6, session: 12.4, handle: 38 },
   reduced:  { label: 'Charging, reduced',               status: 'charging_reduced', plugged: true, closed: true, kw: 2.8, amps: 12.1, session: 23.9, handle: 29 },
   three:    { label: 'Three-phase, full rate',          status: 'charging', plugged: true, closed: true, kw: 11.0, amps: 15.9, session: 8.2, handle: 35, phases: 3, max: 16 },
   oneofthree: { label: 'Three-phase, car on one phase', status: 'charging_reduced', plugged: true, closed: true, kw: 3.7, amps: 15.9, session: 3.1, handle: 30, phases: 3, used: 1, max: 16 },
