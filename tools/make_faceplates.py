@@ -31,6 +31,7 @@ FACE_BOTTOM = 1452                           # bottom of the faceplate (photo y)
 BAR = (997, 1096, 1356)                      # the light bar: x, top, bottom (photo coords)
 CHIN_BOTTOM = 1512                           # the faceplate's lowest point (photo y)
 CABLE_TOP, CABLE_X = 1488, (966, 1032)       # where the cable leaves the faceplate (photo coords)
+RIM = 9                                      # width of the white glass's pale bevel to tone down (px)
 WHITE_FIT = (0.963, 0.971, 30.0, 27.5)      # colour photo -> white photo: x scale, y scale, x, y offset
 OUT_SCALE = 0.75
 
@@ -168,6 +169,20 @@ def white(keep):
     dark = np.isin(lab, [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] > 2000]).astype(np.uint8)
     F, a = cut(img, ((face > .5) | dark).astype(np.uint8))
     F = lights_off(F, True, (round(997.5 * WHITE_FIT[0] + WHITE_FIT[2]), to_white(BAR[1]), to_white(BAR[2])))
+    # The glass's bevel catches the light as a pale rim, which against a dark card reads as a glow
+    # down the shaded left side. Where the rim is paler than the glass just inside it, tone it down
+    # towards that glass colour.
+    inside = cv2.distanceTransform((face > .5).astype(np.uint8), cv2.DIST_L2, 5)
+    ys, xs = np.nonzero(face > .5)
+    y0, y1, x0, x1 = ys.min() - 4, ys.max() + 5, xs.min() - 4, xs.max() + 5
+    deep = inside[y0:y1, x0:x1] > RIM
+    glass = cv2.inpaint(np.clip(F[y0:y1, x0:x1], 0, 255).astype(np.uint8), (~deep).astype(np.uint8), 5,
+                        cv2.INPAINT_TELEA).astype(np.float32)      # the glass colour, carried out to the edge
+    Fc = F[y0:y1, x0:x1]
+    w = np.clip(1 - inside[y0:y1, x0:x1] / RIM, 0, 1)[..., None] * .85
+    w[(inside[y0:y1, x0:x1] == 0) & (face[y0:y1, x0:x1] > 0)] = 1   # the soft outermost pixels too
+    pale = ((Fc.mean(axis=2) - glass.mean(axis=2)) > 4)[..., None] & (face[y0:y1, x0:x1] > 0)[..., None]
+    F[y0:y1, x0:x1] = np.where(pale, glass * w + Fc * (1 - w), Fc)
     near = lambda m: cv2.dilate(m.astype(np.uint8), k(3)) > 0
     box = (X0 * WHITE_FIT[0] + WHITE_FIT[2], Y0 * WHITE_FIT[1] + WHITE_FIT[3],
            (X0 + W) * WHITE_FIT[0] + WHITE_FIT[2], (Y0 + H) * WHITE_FIT[1] + WHITE_FIT[3])
