@@ -55,6 +55,9 @@ function states(s, prefix = 'tesla_wall_connector') {
 }
 
 function card(faceplate, scenario, width) {
+  // the card only measures the phases while charging and remembers them in between, so start each
+  // card as if it has seen a charge (single-phase unless the scenario says otherwise)
+  try { localStorage.setItem('tesla-wall-connector-card:phases:tesla_wall_connector', String(SCENARIOS[scenario].phases ?? 1)); } catch (e) { /* file:// may block it */ }
   const el = document.createElement('tesla-wall-connector-card');
   el.setConfig({ faceplate, vehicle_name: 'My car', vehicle_battery: 'sensor.my_car_battery',
                  max_current: SCENARIOS[scenario].max ?? 32, schedule: { start: '00:00', end: '16:00' } });
