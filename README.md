@@ -143,8 +143,11 @@ The card is one self-contained file: every faceplate photo is built into it.
 
 ## Add the card
 
-**Edit dashboard → Add card**, search for **Tesla Wall Connector**, and fill in the editor. Or in
-YAML:
+**Edit dashboard → Add card**, search for **Tesla Wall Connector**, and fill in the editor:
+
+![The card's visual editor](docs/editor.png)
+
+Or in YAML:
 
 ```yaml
 type: custom:tesla-wall-connector-card
