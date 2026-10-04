@@ -75,8 +75,9 @@ Tap the charger or any figure to open its details in Home Assistant.
   light bar and figures can lag the real ones by that much, and anything shorter can be missed.
 - **The schedule is up to you.** The charger's local API doesn't report its charging schedule, so
   you enter the same times in the card.
-- **It doesn't know which car is plugged in.** The charger only knows that a car is, so the card
-  uses the name and battery sensor you give it.
+- **It doesn't know which car is plugged in.** The Tesla app can name a connected Tesla, but it gets
+  that through Tesla's cloud. The charger's local API only says that a car is connected, so the
+  card uses the name and battery sensor you give it.
 - **Power while idle.** Some chargers report a few hundred milliamps with the relay open, which
   reads as about 0.1 kW. The card shows 0 kW whenever the relay is open.
 - **Fault codes.** The integration doesn't say which fault, so the card shows a steady red light
