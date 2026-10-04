@@ -8,7 +8,7 @@
  * Light codes are from Tesla's Wall Connector 3 install manual (APAC), "Wall Connector LEDs".
  */
 (() => {   // keep everything out of the page's global scope
-  const TWC_CARD_VERSION = '1.0.0';
+  const TWC_CARD_VERSION = '1.0.1';
 
   // Tesla's faceplates: the standard white glass one and the four colour-matched ones. Each has two
   // photos: handle docked, and handle out (in a car). Every photo is framed the same way.
@@ -381,7 +381,7 @@
     name: 'Tesla Wall Connector',
     description: 'A Gen 3 Wall Connector in your faceplate colour, with a working light bar and its live figures.',
     preview: true,
-    documentationURL: 'https://github.com/CameronSmith93/Tesla-Wall-Connector-Card',
+    documentationURL: 'https://github.com/CameronSmith93/Tesla-Wall-Connector-Card-HA',
   });
   console.info(`%c TESLA-WALL-CONNECTOR-CARD %c ${TWC_CARD_VERSION} `, 'background:#16171a;color:#fff', 'background:#3de26a;color:#000');
 })();

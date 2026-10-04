@@ -82,6 +82,9 @@ Tap the charger or any figure to open its details in Home Assistant.
   reads as about 0.1 kW. The card shows 0 kW whenever the relay is open.
 - **Fault codes.** The integration doesn't say which fault, so the card shows a steady red light
   rather than the real blink code.
+- **The handle is the slim North American one.** Tesla's photos of every faceplate show the NACS
+  handle. Wall Connectors sold in Australia, New Zealand, the UK and Europe have a chunkier Type 2
+  handle, so the card's handle won't quite match yours there.
 - **Gen 3 only.** The integration supports the Gen 3 Wall Connector (the one with Wi-Fi).
 
 Built and tested with a Gen 3 Wall Connector (Type 2, single-phase, Australia) with a Midnight
@@ -95,8 +98,9 @@ integration set up. It only needs the charger's IP address.
 
 **With HACS**
 
-1. In HACS, open the menu (⋮) → **Custom repositories**, add this repository's URL and choose
-   **Dashboard** as the type.
+1. In HACS, open the menu (⋮) → **Custom repositories**, add
+   `https://github.com/CameronSmith93/Tesla-Wall-Connector-Card-HA` and choose **Dashboard** as the
+   type.
 2. Find **Tesla Wall Connector Card**, download it, and reload the browser when HACS asks.
 
 **By hand**
