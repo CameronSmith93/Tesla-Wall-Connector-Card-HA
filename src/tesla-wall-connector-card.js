@@ -8,7 +8,7 @@
  * Light codes are from Tesla's Wall Connector 3 install manual (APAC), "Wall Connector LEDs".
  */
 (() => {   // keep everything out of the page's global scope
-  const TWC_CARD_VERSION = '1.1.1';
+  const TWC_CARD_VERSION = '1.1.2';
 
   // Tesla's faceplates: the standard white glass one and the four colour-matched ones. Each has two
   // photos: handle docked, and handle out (in a car). Every photo is framed the same way.
@@ -104,7 +104,8 @@
 
     .led.on { opacity: 1; }
     .led.stream { animation: stream 1.6s linear infinite; }
-    @keyframes stream { 0% { opacity: .18; } 18% { opacity: 1; } 45% { opacity: .5; } 100% { opacity: .18; } }
+    /* the unlit lights all but go out between pulses, so the stream reads clearly */
+    @keyframes stream { 0% { opacity: .02; } 18% { opacity: 1; } 45% { opacity: .35; } 100% { opacity: .02; } }
     .led.blink2 { animation: blink2 2.2s steps(1, end) infinite; }
     @keyframes blink2 { 0% { opacity: 1; } 12% { opacity: 0; } 24% { opacity: 1; } 36% { opacity: 0; } 100% { opacity: 0; } }
     .halo.stream { animation: halo 3.2s ease-in-out infinite; }
