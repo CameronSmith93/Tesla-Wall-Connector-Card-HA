@@ -37,7 +37,7 @@
   };
 
   // HA status -> what the light bar shows.
-  //   mode: solid | stream | breathe | blink2 | all | off;  led: which of the 7 (0 = top)
+  //   mode: solid | stream | blink2 | all | off;  led: which of the 7 (0 = top)
   const LIGHTS = {
     booting:           { mode: 'all', colour: 'white' },
     not_connected:     { mode: 'solid', led: 0, colour: 'green' },
@@ -51,7 +51,6 @@
     error:             { mode: 'solid', led: 0, colour: 'red' },
   };
 
-  const NEGOTIATING_LIGHTS = ['blink2', 'breathe', 'solid'];
 
   const STATUS_TEXT = {
     booting: 'Starting up',
@@ -104,15 +103,14 @@
     .led.on { opacity: 1; }
     .led.stream { animation: stream 1.6s linear infinite; }
     @keyframes stream { 0% { opacity: .18; } 18% { opacity: 1; } 45% { opacity: .5; } 100% { opacity: .18; } }
-    .led.breathe { animation: breathe 3s ease-in-out infinite; }
-    @keyframes breathe { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
     .led.blink2 { animation: blink2 2.2s steps(1, end) infinite; }
     @keyframes blink2 { 0% { opacity: 1; } 12% { opacity: 0; } 24% { opacity: 1; } 36% { opacity: 0; } 100% { opacity: 0; } }
-    .led.red3 { animation: red3 3s steps(1, end) infinite; }
+    /* three red blinks, then a one-second pause (the manual: "all red blink codes pause for one second") */
+    .led.red3 { animation: red3 2.5s steps(1, end) infinite; }
     @keyframes red3 { 0% { opacity: 1; } 10% { opacity: 0; } 20% { opacity: 1; } 30% { opacity: 0; } 40% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
     .halo.stream { animation: halo 3.2s ease-in-out infinite; }
     @keyframes halo { 0%, 100% { opacity: .45; } 50% { opacity: .75; } }
-    @media (prefers-reduced-motion: reduce) { .led.stream, .halo.stream, .led.breathe { animation: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .led.stream, .halo.stream { animation: none; opacity: 1; } }
 
     /* the figures */
     .info { position: absolute; right: 5cqw; top: 5.4cqw; bottom: 4.6cqw; display: flex; flex-direction: column; }
@@ -182,9 +180,6 @@
       // a schedule only counts once it has both ends (the editor fills it in one field at a time)
       const s = this._config.schedule;
       this._schedule = s && TIME.test(s.start || '') && TIME.test(s.end || '') ? s : null;
-      const neg = this._config.negotiating_light;
-      if (neg && !NEGOTIATING_LIGHTS.includes(neg)) throw new Error(`negotiating_light must be one of: ${NEGOTIATING_LIGHTS.join(', ')}`);
-      this._lights = { ...LIGHTS, negotiating: { ...LIGHTS.negotiating, mode: neg || LIGHTS.negotiating.mode } };
       this._built = false;
       this._build();
       this._update();
@@ -291,7 +286,7 @@
       const closed = contactor && contactor.state === 'on';
 
       // light bar
-      const light = offline ? { mode: 'off' } : (this._lights[status] || { mode: 'off' });
+      const light = offline ? { mode: 'off' } : (LIGHTS[status] || { mode: 'off' });
       const rgb = COLOURS[light.colour] || COLOURS.white;
       r.querySelector('.scene').style.setProperty('--c', rgb);
       r.querySelector('.unit').classList.toggle('offline', offline);
@@ -312,7 +307,7 @@
         setC(rgb);
         if (light.mode === 'stream') { el.classList.add('stream'); el.style.animationDelay = `${(i * 0.16).toFixed(2)}s`; }
         else if (light.mode === 'all') el.classList.add('on');
-        else if (['solid', 'breathe', 'blink2'].includes(light.mode) && i === light.led) el.classList.add(light.mode === 'solid' ? 'on' : light.mode);
+        else if (['solid', 'blink2'].includes(light.mode) && i === light.led) el.classList.add(light.mode === 'solid' ? 'on' : light.mode);
         if (light.red && i === 0) { el.className = 'led red3'; setC(COLOURS.red); el.style.animationDelay = ''; }
       });
       const halo = r.querySelector('.halo');

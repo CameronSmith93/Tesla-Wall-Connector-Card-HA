@@ -37,8 +37,8 @@ async function open(browser, faceplate, state, width, time, scale) {
 }
 
 // Seek every animation to the same moment. The offset is a whole number of every loop (1.6 s, 2.2 s,
-// 3 s, 3.2 s), so each one is well past its start delay and at the same point in its cycle.
-const LOOP = 528000;
+// 2.5 s, 3.2 s), so each one is well past its start delay and at the same point in its cycle.
+const LOOP = 880000;
 const seek = (page, ms) => page.evaluate((t) => {
   const anims = document.getElementById('card').shadowRoot.getAnimations();
   anims.forEach((a) => { a.pause(); a.currentTime = t; });

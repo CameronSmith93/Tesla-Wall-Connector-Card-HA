@@ -53,8 +53,7 @@ charger reports:
 | Offline | Nothing | Nothing |
 
 "Plugged in, not ready to charge" is what a Wall Connector shows while its own charging schedule
-holds charging off. That's two blue blinks on a real charger, which the card shows by default. If
-yours does something else at that point, set `negotiating_light` (see Options).
+holds charging off: two blue blinks, checked against a real charger.
 
 ## What the card shows
 
@@ -140,7 +139,6 @@ The card is designed for a full-width slot in a sections view, and works from ab
 | `vehicle_name` | | The car on this charger, shown while it's plugged in |
 | `vehicle_battery` | | A sensor with the car's battery level, shown beside its name |
 | `schedule.start`, `schedule.end` | | The charging window set on the Wall Connector (24-hour `HH:MM`). Windows that cross midnight work. |
-| `negotiating_light` | `blink2` | YAML only. What the bar shows while the charger holds charging off: `blink2` (two blue blinks), `breathe` (blue, slowly pulsing) or `solid` (solid blue) |
 
 The card reads these entities, each starting with `entity_prefix`:
 
